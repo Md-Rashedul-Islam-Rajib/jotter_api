@@ -1,6 +1,9 @@
 import { FileModel } from './file.model';
 import { UserModel } from '../user/user.model';
-import { deleteFromCloudinary, uploadToCloudinary } from '../../utilities/cloudinary';
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from '../../utilities/cloudinary';
 import { StatusFullError } from '../../class/statusFullError';
 import config from '../../config';
 import bcrypt from 'bcrypt';
@@ -78,7 +81,7 @@ export class FileServices {
     }
 
     // Update user storage
-    const user = await UserModel.findOne({email});
+    const user = await UserModel.findOne({ email });
     if (user) {
       user.usedStorage -= file.size;
       await user.save();
@@ -90,7 +93,7 @@ export class FileServices {
   static async duplicateFile(email: string, fileId: string) {
     const originalFile = await FileModel.findOne({
       _id: fileId,
-      owner: { email },
+      owner: email,
     });
     if (!originalFile) throw new Error('File not found');
 
@@ -192,13 +195,13 @@ export class FileServices {
   static async togglePrivate(email: string, fileId: string, password?: string) {
     const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
-
+    console.log(file.isPrivate);
     // File is private → making it public
     if (file.isPrivate) {
       if (!password) {
         throw new Error('Password is required to make this file public.');
       }
-
+      console.log(file.password);
       // Check if password matches the hashed one
       const isMatch = await bcrypt.compare(password, file.password || '');
       if (!isMatch) {
@@ -208,7 +211,9 @@ export class FileServices {
       // Make it public and remove password
       file.isPrivate = false;
       file.password = undefined;
+      return await file.save();
     }
+
     //File is public → making it private
     else {
       if (!password) {
@@ -220,9 +225,8 @@ export class FileServices {
         password,
         Number(config.bcrypt_salt_rounds),
       );
+      return await file.save();
     }
-
-    return await file.save();
   }
 
   static async createFolder(

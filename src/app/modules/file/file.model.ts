@@ -17,7 +17,7 @@ const fileSchema = new Schema<TFile>(
     owner: { type: String, required: true },
     isFavorite: { type: Boolean, default: false },
     isPrivate: { type: Boolean, default: false },
-    password: { type: String, select: false },
+    password: { type: String, required: false },
     tags: [{ type: String }],
     metadata: { type: Object },
   },

@@ -24,6 +24,9 @@ export class FileControllers {
     sendResponse(res, 200, true, 'Files retrieved successfully', files);
   });
 
+
+
+    
   static toggleFavorite = catchAsync(async (req: Request, res: Response) => {
       console.log(req.user!.email, req.params.id)
       const file = await FileServices.toggleFavorite(req.user!.email, req.params.id);
@@ -31,6 +34,9 @@ export class FileControllers {
     sendResponse(res, 200, true, 'Favorite status updated', file);
   });
 
+
+
+    
   static togglePrivate = catchAsync(async (req: Request, res: Response) => {
     const file = await FileServices.togglePrivate(
       req.user!.email,
