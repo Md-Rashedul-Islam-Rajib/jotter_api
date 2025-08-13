@@ -2,6 +2,11 @@ import { FileModel } from './file.model';
 import { UserModel } from '../user/user.model';
 import { deleteFromCloudinary, uploadToCloudinary } from '../../utilities/cloudinary';
 import { StatusFullError } from '../../class/statusFullError';
+import config from '../../config';
+import bcrypt from 'bcrypt';
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 export class FileServices {
   static async uploadFile(
@@ -54,9 +59,11 @@ export class FileServices {
 
     return newFile;
   }
-    static getFileType(mimetype: string): any | "text" | "image" | "pdf" | "folder" | "html" | "other" {
-        throw new Error('Method not implemented.');
-    }
+  static getFileType(
+    mimetype: string,
+  ): any | 'text' | 'image' | 'pdf' | 'folder' | 'html' | 'other' {
+    throw new Error('Method not implemented.');
+  }
 
   static async deleteFile(userId: string, fileId: string) {
     const file = await FileModel.findOne({ _id: fileId, owner: userId });
@@ -134,12 +141,92 @@ export class FileServices {
     return newFile;
   }
 
-  // private static async getFileBufferFromCloudinary(publicId: string) {
-  //   const url = cloudinary.url(publicId, { flags: 'attachment' });
-  //   const response = await fetch(url);
-  //   return Buffer.from(await response.arrayBuffer());
-  // }
+  static async getStorageInfo(userId: string) {
+    const user = await UserModel.findById(userId);
+    if (!user) throw new Error('User not found');
 
-  
+    return {
+      totalStorage: user.storageLimit,
+      usedStorage: user.usedStorage,
+      availableStorage: user.storageLimit - user.usedStorage,
+    };
+  }
+
+  static async renameFile(userId: string, fileId: string, newName: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+    if (!file) throw new Error('File not found');
+
+    file.name = newName;
+    return await file.save();
+  }
+  static async getFiles(userId: string, query: any) {
+    const filter: any = { owner: userId };
+
+    // Apply filters
+    if (query.type) filter.type = query.type;
+    if (query.favorite) filter.isFavorite = query.favorite === 'true';
+    if (query.search) filter.name = { $regex: query.search, $options: 'i' };
+    if (query.parentFolder) filter.parentFolder = query.parentFolder;
+
+    // Sorting
+    const sort: any = {};
+    if (query.sortBy) {
+      sort[query.sortBy] = query.sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1; // Default sort by newest first
+    }
+
+    return await FileModel.find(filter).sort(sort);
+  }
+  static async togglePrivate(
+    userId: string,
+    fileId: string,
+    password?: string,
+  ) {
+    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+    if (!file) throw new Error('File not found');
+
+    file.isPrivate = !file.isPrivate;
+    if (file.isPrivate && password) {
+      file.password = await bcrypt.hash(
+        password,
+        Number(config.bcrypt_salt_rounds),
+      );
+    } else {
+      file.password = undefined;
+    }
+
+    return await file.save();
+  }
+  static async createFolder(
+    userId: string,
+    name: string,
+    parentFolder?: string,
+  ) {
+    return await FileModel.create({
+      name,
+      type: 'folder',
+      size: 0,
+      path: `folders/${uuidv4()}`,
+      parentFolder,
+      owner: userId,
+    });
+  }
+
+  static async toggleFavorite(userId: string, fileId: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+    if (!file) throw new Error('File not found');
+
+    file.isFavorite = !file.isFavorite;
+    return await file.save();
+  }
+  private static generateFilePath(
+    userId: string,
+    originalName: string,
+  ): string {
+    const ext = path.extname(originalName);
+    const baseName = path.basename(originalName, ext);
+    return `users/${userId}/${baseName}-${uuidv4()}${ext}`;
+  }
 }
   
