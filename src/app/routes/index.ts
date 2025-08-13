@@ -1,9 +1,7 @@
 import { Router } from 'express';
 import AuthRouter from '../modules/auth/auth.route';
-import RentalHouseRouter from '../modules/rentalHouse/house.route';
-import RentalRequestRouter from '../modules/rentalRequest/request.route';
-import AdminRouter from '../modules/admin/admin.route';
 import UploadRouter from '../modules/upload/upload.route';
+import FileRouter from '../modules/file/file.route';
 
 
 
@@ -15,16 +13,8 @@ const allRoutes = [
     route: AuthRouter,
   },
   {
-    path: '/landlords',
-    route: RentalHouseRouter
-  },
-  {
-    path: '/tenants',
-    route: RentalRequestRouter
-  },
-  {
-    path: '/admin',
-    route: AdminRouter
+    path: '/files',
+    route: FileRouter
   }, {
     path: '/api',
     route: UploadRouter
