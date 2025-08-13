@@ -4,7 +4,6 @@ import { deleteFromCloudinary, uploadToCloudinary } from '../../utilities/cloudi
 import { StatusFullError } from '../../class/statusFullError';
 import config from '../../config';
 import bcrypt from 'bcrypt';
-import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
