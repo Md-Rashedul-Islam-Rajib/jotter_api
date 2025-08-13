@@ -64,14 +64,10 @@ userSchema.post('save', function (doc, next) {
   next();
 });
 
-userSchema.statics.isUserExists = async function (identifier: string) {
-  // Check if the identifier is an email
-  if (identifier.includes('@')) {
-    return await UserModel.findOne({ email: identifier }).select('+password');
-  } else {
-    // Otherwise, treat it as an ID
-    return await UserModel.findById(identifier).select('+password');
-  }
+userSchema.statics.isUserExists = async function (email: string) {
+  console.log(email)
+    return await UserModel.findOne({email}).select('+password');
+  
 };
 
 userSchema.statics.isPasswordMatched = async function (

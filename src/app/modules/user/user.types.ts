@@ -15,7 +15,7 @@ export type TUser = {
 
 export interface UserStatics extends Model<TUser> {
   //instance methods for checking if the user exist
-  isUserExists(email: string, id?: string): Promise<TUser>;
+  isUserExists(email: string): Promise<TUser>;
   //instance methods for checking if passwords are matched
   isPasswordMatched(
     plainTextPassword: string,

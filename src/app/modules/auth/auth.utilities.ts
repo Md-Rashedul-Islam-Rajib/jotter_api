@@ -1,14 +1,15 @@
 import type { JwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../user/user.model';
+import { StringValue } from 'ms';
 
 export const createToken = (
   jwtPayload: { email: string},
   secret: string,
-  expiresIn: string | number,
+  expiresIn: StringValue,
 ) => {
   return jwt.sign(jwtPayload, secret, {
-    expiresIn ,
+    expiresIn,
   });
 };
 

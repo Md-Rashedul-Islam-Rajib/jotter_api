@@ -3,7 +3,7 @@ import { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { ValidationErrorResponse } from '../types/error.types';
 
-export const handleErrors: ErrorRequestHandler = (err, _req, res, _next) => {
+export const handleErrors: ErrorRequestHandler = (err, _req, res, next) => {
   // handling mongoose errors
   if (err instanceof mongoose.Error.ValidationError) {
     res.status(400).json({
@@ -59,7 +59,9 @@ export const handleErrors: ErrorRequestHandler = (err, _req, res, _next) => {
       stack: err.stack,
     });
   }
-
+if (res.headersSent) {
+  return next(err);
+}
   // handling unknown errors
   res.status(500).json({
     success: false,

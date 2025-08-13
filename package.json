@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prettier": "prettier --ignore-path .gitignore --write \"./src/**/*.+(js|ts|json)\"",
-    "prettier:fix": "prettier --write src"
+    "prettier:fix": "prettier --write src",
+    "deploy": "tsc && vercel --prod"
   },
   "keywords": [],
   "author": "",
@@ -38,6 +39,7 @@
     "@types/express": "4.17.21",
     "@types/handlebars": "^4.1.0",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/ms": "^2.1.0",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.13.1",
     "@types/nodemailer": "^6.4.17",

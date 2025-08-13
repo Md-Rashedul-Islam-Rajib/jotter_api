@@ -1,11 +1,20 @@
-import { TErrorName, TStatusCode } from '../types';
 
+
+
+export type TErrorName =
+  | 'ValidationError'
+  | 'ZodValidationError'
+  | 'NotFoundError'
+  | 'StorageError'
+  | 'AuthenticationError'
+  | 'AuthorizationError'
+  | 'InternalServerError';
 export class StatusFullError extends Error {
   constructor(
     public name: TErrorName,
     public message: string,
     public success: boolean,
-    public status: TStatusCode,
+    public status: number,
     public path: string = '',
   ) {
     super(message);

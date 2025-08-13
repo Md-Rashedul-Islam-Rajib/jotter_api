@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import QueryBuilder from '../../builder/queryBuilder';
 import nodemailer from "nodemailer";
 import { EmailHelper } from '../../utilities/emailHelper';
+import { StringValue } from 'ms';
 
 export class AuthServices {
   static async registerUser(payload: TUser) {
@@ -25,8 +26,6 @@ export class AuthServices {
   static async loginUser(payload: TLoginUser) {
     console.log(payload);
     const user = await preValidatingUser(payload.email);
-    
-  
 
     const isPasswordCorrect = await UserModel.isPasswordMatched(
       payload?.password,
@@ -45,7 +44,7 @@ export class AuthServices {
     const jwtPayload = {
       email: user.email,
 
-      userId:user._id
+      userId: user._id,
     };
 
     const accessToken = createToken(
@@ -64,7 +63,7 @@ export class AuthServices {
       accessToken,
       refreshToken,
       email: user.email,
-      userId:user._id
+      userId: user._id,
     };
   }
   static async getAllUsers(query: Record<string, unknown>) {
@@ -75,8 +74,6 @@ export class AuthServices {
 
     return result;
   }
-
-  
 
   static async updateUser(updatedData: Partial<TUser>) {
     const response = await UserModel.findOneAndUpdate(
@@ -94,15 +91,14 @@ export class AuthServices {
     return response;
   }
 
- 
-    static async deleteUser(id: string) {
-      const result = await UserModel.findByIdAndUpdate(
-        id,
-        { isDeleted: true },
-        { new: true, runValidators: true },
-      );
-      return result;
-    }
+  static async deleteUser(id: string) {
+    const result = await UserModel.findByIdAndUpdate(
+      id,
+      { isDeleted: true },
+      { new: true, runValidators: true },
+    );
+    return result;
+  }
 
   static async changePassword(updatedData: {
     email: string;
@@ -135,29 +131,30 @@ export class AuthServices {
     const user = await UserModel.isUserExists(email);
     if (!user) {
       throw new StatusFullError(
-        "NotFoundError",
-        "User not found with this email",
+        'NotFoundError',
+        'User not found with this email',
         true,
-        404
-      )
+        404,
+      );
     }
 
-
-    const otp = crypto.randomInt(100000,999999).toString();
+    const otp = crypto.randomInt(100000, 999999).toString();
     const otpExpiration = new Date(Date.now() + 15 * 60 * 1000);
 
-
-    user.passwordResetOTP = otp;
-    user.passwordResetOTPExpiration = otpExpiration;
-    await user.save();
-
-
-    await EmailHelper.sendEmail(
-      email,
-      'Password Reset OTP',
-      'OTPEmail',
-      { otp }, 
+    await UserModel.updateOne(
+      { email },
+      {
+        $set: {
+          passwordResetOTP: otp,
+          passwordResetOTPExpiration: otpExpiration,
+        },
+      },
     );
+
+    await EmailHelper.sendEmail(email, 'Password Reset OTP', 'OTPEmail', {
+      otp,
+    });
+
     return { message: `OTP sent to this mail address : ${email}` };
   }
 
@@ -165,45 +162,47 @@ export class AuthServices {
     const user = await UserModel.isUserExists(email);
     if (!user) {
       throw new StatusFullError(
-        "NotFoundError",
-        "User not found with this email",
+        'NotFoundError',
+        'User not found with this email',
         true,
-        404
-      )
+        404,
+      );
     }
 
     if (user.passwordResetOTP !== otp) {
       throw new StatusFullError(
-        "AuthenticationError",
-        "Invalid OTP",
+        'AuthenticationError',
+        'Invalid OTP',
         true,
-        401
+        401,
       );
     }
 
-    user.passwordResetOTPVerified = true;
-    await user.save();
+    await UserModel.updateOne(
+      { email },
+      { $set: { passwordResetOTPVerified: true } },
+    );
 
-    return {message: "OTP verified successfully"};
+    return { message: 'OTP verified successfully' };
   }
-  
+
   static async resetPassword(email: string, newPassword: string) {
     const user = await UserModel.isUserExists(email);
     if (!user) {
       throw new StatusFullError(
-        "NotFoundError",
-        "User not found with this email",
+        'NotFoundError',
+        'User not found with this email',
         true,
-        404
-      )
+        404,
+      );
     }
 
     if (!user.passwordResetOTPVerified) {
       throw new StatusFullError(
-        "AuthenticationError",
-        "OTP not verified",
+        'AuthenticationError',
+        'OTP not verified',
         true,
-        401
+        401,
       );
     }
 
@@ -212,12 +211,17 @@ export class AuthServices {
       Number(config.bcrypt_salt_rounds),
     );
 
-    user.password = hashedPassword;
-    user.passwordResetOTP = undefined;
-    user.passwordResetOTPExpiration = undefined;
-    user.passwordResetOTPVerified = false;
-
-    await user.save();
+    await UserModel.updateOne(
+      { email },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          passwordResetOTP: '',
+          passwordResetOTPExpiration: '',
+        },
+        $setOnInsert: { passwordResetOTPVerified: false }, // resets back to false
+      },
+    );
 
     return { message: 'Password reset successfully' };
   }

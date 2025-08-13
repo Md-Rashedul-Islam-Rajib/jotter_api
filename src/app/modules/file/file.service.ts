@@ -1,13 +1,13 @@
+import { StatusFullError } from './../../class/statusFullError';
 import { FileModel } from './file.model';
 import { UserModel } from '../user/user.model';
 import {
   deleteFromCloudinary,
   uploadToCloudinary,
 } from '../../utilities/cloudinary';
-import { StatusFullError } from '../../class/statusFullError';
 import config from '../../config';
 import bcrypt from 'bcrypt';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { TFile } from './file.types';
@@ -38,7 +38,7 @@ export class FileServices {
       filename_override: file.originalname,
       use_filename: true,
       unique_filename: false,
-    });
+    }) as UploadApiResponse;
 
     // Create file record
     const newFile = await FileModel.create({
@@ -124,7 +124,7 @@ export class FileServices {
           filename_override: `${originalFile.name}-copy`,
           use_filename: true,
         },
-      );
+      ) as UploadApiResponse;
       newPath = result.secure_url;
       publicId = result.public_id;
     }

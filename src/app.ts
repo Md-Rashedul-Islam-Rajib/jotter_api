@@ -3,6 +3,7 @@ import router from './app/routes';
 import cors from 'cors';
 import os from 'os';
 import cookieParser from 'cookie-parser';
+import { handleErrors } from './app/utilities/handleErrors';
 
 const app: Application = express();
 
@@ -12,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 // app.use(cors({ origin: 'https://next-portfolio-ten-fawn.vercel.app', credentials: true }));
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use('/', router);
-
+app.use(handleErrors);
 
 
 
