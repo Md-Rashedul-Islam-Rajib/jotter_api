@@ -24,12 +24,15 @@ export const verifyToken = (secret: string, token?: string) => {
   }
 };
 
-export const preValidatingUser = async (identifier: string) => {
-  const user = await UserModel.isUserExists(identifier);
-  if (!user) {
-    throw new Error('this user is not found');
+export const preValidatingUser = async (identifier?: string) => {
+  if (!identifier || typeof identifier !== 'string') {
+    throw new Error('Identifier must be a valid email or user ID');
   }
 
+  const user = await UserModel.isUserExists(identifier);
+  if (!user) {
+    throw new Error('This user is not found');
+  }
 
   return user;
 };

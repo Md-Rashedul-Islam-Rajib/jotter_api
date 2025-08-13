@@ -7,7 +7,7 @@ export type TFile = {
   path: string;
   publicId?: string;
   parentFolder?: Schema.Types.ObjectId;
-  owner: Schema.Types.ObjectId;
+  owner: string;
   isFavorite: boolean;
   isPrivate: boolean;
   password?: string;

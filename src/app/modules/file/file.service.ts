@@ -4,17 +4,19 @@ import { deleteFromCloudinary, uploadToCloudinary } from '../../utilities/cloudi
 import { StatusFullError } from '../../class/statusFullError';
 import config from '../../config';
 import bcrypt from 'bcrypt';
+import { v2 as cloudinary } from 'cloudinary';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { TFile } from './file.types';
 
 export class FileServices {
   static async uploadFile(
-    userId: string,
+    email: string,
     file: Express.Multer.File,
-    body: any,
+    body: { isPrivate?: boolean; password?: string } = {},
   ) {
     // Check storage space
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findOne({ email });
     if (!user) throw new Error('User not found');
 
     if (user.usedStorage + file.size > user.storageLimit) {
@@ -28,7 +30,7 @@ export class FileServices {
 
     // Upload to Cloudinary
     const result = await uploadToCloudinary(file.buffer, {
-      folder: `jotter/users/${userId}`,
+      folder: `jotter/users/${email}`,
       resource_type: 'auto',
       filename_override: file.originalname,
       use_filename: true,
@@ -38,11 +40,11 @@ export class FileServices {
     // Create file record
     const newFile = await FileModel.create({
       name: file.originalname,
-      type: this.getFileType(file.mimetype),
+      type: FileServices.mapMimeType(file.mimetype),
       size: file.size,
       path: result?.secure_url,
       publicId: result?.public_id,
-      owner: userId,
+      owner: email,
       isPrivate: body.isPrivate || false,
       password: body.password || undefined,
       metadata: {
@@ -58,14 +60,16 @@ export class FileServices {
 
     return newFile;
   }
-  static getFileType(
-    mimetype: string,
-  ): any | 'text' | 'image' | 'pdf' | 'folder' | 'html' | 'other' {
-    throw new Error('Method not implemented.');
+  static mapMimeType(mimetype: string): TFile['type'] {
+    if (mimetype.startsWith('image/')) return 'image';
+    if (mimetype === 'application/pdf') return 'pdf';
+    if (mimetype.startsWith('text/')) return 'text';
+    if (mimetype === 'text/html') return 'html';
+    return 'other';
   }
 
-  static async deleteFile(userId: string, fileId: string) {
-    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+  static async deleteFile(email: string, fileId: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
 
     // Delete from Cloudinary if it's not a folder
@@ -74,7 +78,7 @@ export class FileServices {
     }
 
     // Update user storage
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findOne({email});
     if (user) {
       user.usedStorage -= file.size;
       await user.save();
@@ -83,15 +87,15 @@ export class FileServices {
     await FileModel.deleteOne({ _id: fileId });
   }
 
-  static async duplicateFile(userId: string, fileId: string) {
+  static async duplicateFile(email: string, fileId: string) {
     const originalFile = await FileModel.findOne({
       _id: fileId,
-      owner: userId,
+      owner: { email },
     });
     if (!originalFile) throw new Error('File not found');
 
     // Check storage space
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findOne({ email });
     if (!user) throw new Error('User not found');
 
     if (user.usedStorage + originalFile.size > user.storageLimit) {
@@ -111,7 +115,7 @@ export class FileServices {
       const result = await uploadToCloudinary(
         await this.getFileBufferFromCloudinary(originalFile.publicId),
         {
-          folder: `jotter/users/${userId}`,
+          folder: `jotter/users/${email}`,
           resource_type:
             originalFile.metadata?.cloudinary?.resource_type || 'auto',
           filename_override: `${originalFile.name}-copy`,
@@ -140,8 +144,8 @@ export class FileServices {
     return newFile;
   }
 
-  static async getStorageInfo(userId: string) {
-    const user = await UserModel.findById(userId);
+  static async getStorageInfo(email: string) {
+    const user = await UserModel.findOne({ email });
     if (!user) throw new Error('User not found');
 
     return {
@@ -151,54 +155,78 @@ export class FileServices {
     };
   }
 
-  static async renameFile(userId: string, fileId: string, newName: string) {
-    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+  static async renameFile(email: string, fileId: string, newName: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
 
     file.name = newName;
     return await file.save();
   }
-  static async getFiles(userId: string, query: any) {
-    const filter: any = { owner: userId };
+  static async getFiles(email: string, query: any) {
+    const filter: any = { owner: email };
 
-    // Apply filters
     if (query.type) filter.type = query.type;
     if (query.favorite) filter.isFavorite = query.favorite === 'true';
     if (query.search) filter.name = { $regex: query.search, $options: 'i' };
     if (query.parentFolder) filter.parentFolder = query.parentFolder;
+
+    if (query.date) {
+      const selectedDate = new Date(query.date);
+      const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
+
+      filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    }
 
     // Sorting
     const sort: any = {};
     if (query.sortBy) {
       sort[query.sortBy] = query.sortOrder === 'desc' ? -1 : 1;
     } else {
-      sort.createdAt = -1; // Default sort by newest first
+      sort.createdAt = -1;
     }
 
     return await FileModel.find(filter).sort(sort);
   }
-  static async togglePrivate(
-    userId: string,
-    fileId: string,
-    password?: string,
-  ) {
-    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+
+  static async togglePrivate(email: string, fileId: string, password?: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
 
-    file.isPrivate = !file.isPrivate;
-    if (file.isPrivate && password) {
+    // File is private → making it public
+    if (file.isPrivate) {
+      if (!password) {
+        throw new Error('Password is required to make this file public.');
+      }
+
+      // Check if password matches the hashed one
+      const isMatch = await bcrypt.compare(password, file.password || '');
+      if (!isMatch) {
+        throw new Error('Incorrect password.');
+      }
+
+      // Make it public and remove password
+      file.isPrivate = false;
+      file.password = undefined;
+    }
+    //File is public → making it private
+    else {
+      if (!password) {
+        throw new Error('Password is required to make this file private.');
+      }
+
+      file.isPrivate = true;
       file.password = await bcrypt.hash(
         password,
         Number(config.bcrypt_salt_rounds),
       );
-    } else {
-      file.password = undefined;
     }
 
     return await file.save();
   }
+
   static async createFolder(
-    userId: string,
+    email: string,
     name: string,
     parentFolder?: string,
   ) {
@@ -208,24 +236,27 @@ export class FileServices {
       size: 0,
       path: `folders/${uuidv4()}`,
       parentFolder,
-      owner: userId,
+      owner: email,
     });
   }
 
-  static async toggleFavorite(userId: string, fileId: string) {
-    const file = await FileModel.findOne({ _id: fileId, owner: userId });
+  static async toggleFavorite(email: string, fileId: string) {
+    const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
 
     file.isFavorite = !file.isFavorite;
     return await file.save();
   }
-  private static generateFilePath(
-    userId: string,
-    originalName: string,
-  ): string {
+
+  private static async getFileBufferFromCloudinary(publicId: string) {
+    const url = cloudinary.url(publicId, { flags: 'attachment' });
+    const response = await fetch(url);
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  private static generateFilePath(email: string, originalName: string): string {
     const ext = path.extname(originalName);
     const baseName = path.basename(originalName, ext);
-    return `users/${userId}/${baseName}-${uuidv4()}${ext}`;
+    return `users/${email}/${baseName}-${uuidv4()}${ext}`;
   }
 }
-  

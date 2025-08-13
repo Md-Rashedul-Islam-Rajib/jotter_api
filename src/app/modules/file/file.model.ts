@@ -14,7 +14,7 @@ const fileSchema = new Schema<TFile>(
     publicId: { type: String, select: false },
     createdAt: { type: Date, default: Date.now },
     parentFolder: { type: Schema.Types.ObjectId, ref: 'File' },
-    owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    owner: { type: String, required: true },
     isFavorite: { type: Boolean, default: false },
     isPrivate: { type: Boolean, default: false },
     password: { type: String, select: false },

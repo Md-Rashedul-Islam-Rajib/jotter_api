@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import AuthRouter from '../modules/auth/auth.route';
-import UploadRouter from '../modules/upload/upload.route';
+// import UploadRouter from '../modules/upload/upload.route';
 import FileRouter from '../modules/file/file.route';
 
 
@@ -15,10 +15,11 @@ const allRoutes = [
   {
     path: '/files',
     route: FileRouter
-  }, {
-    path: '/api',
-    route: UploadRouter
-  }
+  },
+  // {
+  //   path: '/api',
+  //   route: UploadRouter
+  // }
   
 ];
 

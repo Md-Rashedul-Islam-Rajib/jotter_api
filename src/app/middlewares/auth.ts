@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
-import { TUserRole } from '../modules/user/user.types';
+
 import config from '../config';
 import catchAsync from '../utilities/catchAsync';
 import { preValidatingUser } from '../modules/auth/auth.utilities';
 import { CustomPayload } from '../..';
 
-const auth = (...roles: TUserRole[]) => {
+
+const auth = () => {
   return catchAsync(async (req, _res, next) => {
     const token = req.headers.authorization;
 
@@ -20,17 +21,17 @@ const auth = (...roles: TUserRole[]) => {
       config.jwt_access_secret as string,
     ) as CustomPayload;
 
-    const { email, role } = decoded;
+    const { email } = decoded;
 
+    // Ensure user exists
     await preValidatingUser(email);
 
-    if (roles && !roles.includes(role as TUserRole)) {
-      throw new Error('you are not authorized');
-    }
+    // Attach user payload to request
+    req.user = { email };
 
-    req.user = decoded;
     next();
   });
 };
+
 
 export default auth;

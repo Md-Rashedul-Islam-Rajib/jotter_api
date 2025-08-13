@@ -23,7 +23,9 @@ export class AuthServices {
   }
 
   static async loginUser(payload: TLoginUser) {
+    console.log(payload);
     const user = await preValidatingUser(payload.email);
+    
   
 
     const isPasswordCorrect = await UserModel.isPasswordMatched(
