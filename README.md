@@ -1,4 +1,4 @@
-# 🏍️ Biker Paradise
+# Jotter API
 
 A robust backend API system for managing storage management records with complete CRUD functionality.
 
