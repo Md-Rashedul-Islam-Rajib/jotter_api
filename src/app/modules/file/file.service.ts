@@ -18,7 +18,7 @@ export class FileServices {
     file: Express.Multer.File,
     body: { isPrivate?: boolean; password?: string } = {},
   ) {
-    // Check storage space
+    // Checking storage space
     const user = await UserModel.findOne({ email });
     if (!user) throw new Error('User not found');
 
@@ -63,6 +63,9 @@ export class FileServices {
 
     return newFile;
   }
+
+
+  // checking file types
   static mapMimeType(mimetype: string): TFile['type'] {
     if (mimetype.startsWith('image/')) return 'image';
     if (mimetype === 'application/pdf') return 'pdf';
@@ -71,6 +74,8 @@ export class FileServices {
     return 'other';
   }
 
+
+  // deleting file 
   static async deleteFile(email: string, fileId: string) {
     const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
@@ -90,6 +95,8 @@ export class FileServices {
     await FileModel.deleteOne({ _id: fileId });
   }
 
+
+  // create copy of file
   static async duplicateFile(email: string, fileId: string) {
     const originalFile = await FileModel.findOne({
       _id: fileId,
@@ -147,6 +154,7 @@ export class FileServices {
     return newFile;
   }
 
+  // get storage info
   static async getStorageInfo(email: string) {
     const user = await UserModel.findOne({ email });
     if (!user) throw new Error('User not found');
@@ -244,6 +252,7 @@ export class FileServices {
     });
   }
 
+  // toggle favorite 
   static async toggleFavorite(email: string, fileId: string) {
     const file = await FileModel.findOne({ _id: fileId, owner: email });
     if (!file) throw new Error('File not found');
@@ -252,6 +261,7 @@ export class FileServices {
     return await file.save();
   }
 
+  // Fetch file buffer from Cloudinary
   private static async getFileBufferFromCloudinary(publicId: string) {
     const url = cloudinary.url(publicId, { flags: 'attachment' });
     const response = await fetch(url);

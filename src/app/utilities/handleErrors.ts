@@ -2,8 +2,9 @@ import mongoose, { MongooseError } from 'mongoose';
 import { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { ValidationErrorResponse } from '../types/error.types';
+import { StatusFullError } from '../class/statusFullError';
 
-export const handleErrors: ErrorRequestHandler = (err, _req, res, next) => {
+export const handleErrors: ErrorRequestHandler = (err, _req, res, _next) => {
   // handling mongoose errors
   if (err instanceof mongoose.Error.ValidationError) {
     res.status(400).json({
@@ -48,20 +49,27 @@ export const handleErrors: ErrorRequestHandler = (err, _req, res, next) => {
       stack: err.stack,
     });
   }
+  if (err instanceof StatusFullError) {
+    res.status(err.status).json({
+      success: err.success,
+      message: err.message,
+      statusCode: err.status,
+      error: err.message,
+      stack: err.stack
+    })
+  }
 
   // handling all other errors except zod and mongoose
   if (err instanceof Error) {
     res.status(500).json({
       success: false,
       message: 'Something went wrong',
-      statusCode: 400,
+      statusCode: 500,
       error: err.message,
       stack: err.stack,
     });
   }
-if (res.headersSent) {
-  return next(err);
-}
+
   // handling unknown errors
   res.status(500).json({
     success: false,
